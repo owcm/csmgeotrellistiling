@@ -1,0 +1,6 @@
+/.idea
+/target
+/data/tiles
+/project/target
+/project/project
+*.iml

@@ -7,36 +7,22 @@ package tutorial
 import java.io.File
 import javax.xml.ws.WebEndpoint
 
-import com.amazonaws.services.s3.model.GetObjectRequest
-import geotrellis.engine.RasterSource
-import geotrellis.engine.op.local.MultiplyRasterSourceMethods
-import geotrellis.engine.op.local.MultiplyRasterSourceMethods
-import geotrellis.engine.op.local.MultiplyRasterSourceMethods
+import geotrellis.proj4.{LatLng, WebMercator}
 import geotrellis.proj4.{WebMercator, LatLng}
-import geotrellis.raster.Tile
-import geotrellis.raster.io.geotiff.{SinglebandGeoTiff, GeoTiff}
-import geotrellis.raster.render.ColorRamps
+import geotrellis.raster._
+import geotrellis.raster.io.geotiff.SinglebandGeoTiff
+import geotrellis.raster.render._
+import geotrellis.raster.reproject.Reproject.Options
 import geotrellis.raster.resample.Bilinear
 import geotrellis.spark.SpatialKey
 import geotrellis.spark.io.hadoop.formats.GeotiffInputFormat
-import geotrellis.vector.{Point, Extent, ProjectedExtent}
+import geotrellis.vector.{ProjectedExtent, Point, Extent}
 import org.apache.hadoop.fs.Path
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
 import org.apache.spark._
-import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd._
 import org.apache.spark.SparkContext._
-import geotrellis.raster._
-import geotrellis.raster.render._
 import geotrellis.raster.reproject.Reproject.{Options => RasterReprojectOptions}
 
-
-import geotrellis.engine._
-import geotrellis.engine.op.elevation.{ElevationRasterSourceMethodExtensions}
-import geotrellis.engine.op.local.{LocalRasterSourceMethodExtensions, MultiplyRasterSourceMethods}
-import geotrellis.engine.op.focal.{FocalRasterSourceMethodExtensions}
 import geotrellis.engine._
 import scala.collection.mutable.ListBuffer
 
