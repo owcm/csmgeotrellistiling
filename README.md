@@ -6,7 +6,7 @@
 ### Run GenHlz test applications
 
 ```
-> sbt -mem 23000 run
+> sbt -mem 33000 run
 ```
 
 Select the `tutorial.GenHLZ` to run.

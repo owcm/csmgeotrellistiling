@@ -3,12 +3,10 @@ package tutorial
 /**
  * Created by chrismangold on 2/23/16.
  */
-
 import java.io.File
 import javax.xml.ws.WebEndpoint
 
 import geotrellis.proj4.{LatLng, WebMercator}
-import geotrellis.proj4.{WebMercator, LatLng}
 import geotrellis.raster._
 import geotrellis.raster.io.geotiff.SinglebandGeoTiff
 import geotrellis.raster.render._
@@ -28,9 +26,6 @@ import scala.collection.mutable.ListBuffer
 
 import java.nio.file.{Files, Paths}
 
-/**
- * Created by chrismangold on 1/8/16.
- */
 object BuildRdd {
 
   val defaultTiffExtensions: Seq[String] = Seq(".tif", ".TIF", ".tiff", ".TIFF")
@@ -63,6 +58,17 @@ object BuildRdd {
 
   }
 
+
+
+  def getListOfFiles(dir: String):List[File] = {
+    val d = new File(dir)
+    if (d.exists && d.isDirectory) {
+      d.listFiles.filter(_.isFile).toList
+    } else {
+      List[File]()
+    }
+  }
+
   def tilePrepRoute( implicit sc: SparkContext ): RDD[ (ProjectedExtent, Tile) ] =  {
 
 
@@ -72,8 +78,62 @@ object BuildRdd {
     var fileCount = 0
     var totalTileSize = 0
 
+    val fileList = getListOfFiles( "data/")
+
+
+    for (name <- fileList) {
+
+      println(name)
+      if (name.toString.contains(".tif")) {
+
+        if (name.length > 0) {
+          bytesToUse = Files.readAllBytes(Paths.get(name.toString))
+        } else {
+          throw new Exception("Land cover layer not supplied");
+        }
+
+        // Construct an object with instructions to fetch the raster
+        // Returns SingleBandGeoTiff
+        val gtIn = SinglebandGeoTiff(bytesToUse)
+
+
+        val projectOptions = RasterReprojectOptions(Bilinear)
+        val projectedRaster = gtIn.projectedRaster.reproject(WebMercator, projectOptions)
+
+        val projExt = new ProjectedExtent(projectedRaster._2, WebMercator)
+
+        var newEntry = (projExt, projectedRaster._1)
+
+        tileList += newEntry
+      }
+    }
+
+    // Look at slope on the single tile.
+    // val slopeTile:Tile = projectedRaster._1.slope(projectedRaster.rasterExtent.cellSize, 1.0)
+    //  var testRamp1 = ColorRamps.LightToDarkSunset.toColorMap(slopeTile.histogram)
+    //  slopeTile.renderPng(testRamp1).write("data/tileslope.png")
+
+    println( "Parallelizing files.")
+
+    val tiles = sc.parallelize( tileList, 4 )
+
+    tiles
+
+  }
+
+  def tilePrepRouteOld( implicit sc: SparkContext ): RDD[ (ProjectedExtent, Tile) ] =  {
+
+
+    var tileList= new ListBuffer[(ProjectedExtent,Tile)]()
+    var bytesToUse: Array[Byte] = null
+
+    var fileCount = 0
+    var totalTileSize = 0
+
     var firstFile = "data/dem_1m_a1_norfolk_vabeach_portsmouth_tile4_WGS.tif"
+    var secondFile = "data/dem_1m_a1_norfolk_vabeach_portsmouth_tile5_WGS.tif"
     println( "File name is  " + firstFile )
+    println( "File name is  " + secondFile )
 
     if (firstFile.length > 0) {
       bytesToUse = Files.readAllBytes(Paths.get(firstFile.toString))
@@ -85,6 +145,7 @@ object BuildRdd {
     // Returns SingleBandGeoTiff
     val gtIn = SinglebandGeoTiff(bytesToUse)
 
+
     val projectOptions = RasterReprojectOptions(Bilinear)
     val projectedRaster = gtIn.projectedRaster.reproject( WebMercator, projectOptions)
 
@@ -94,10 +155,29 @@ object BuildRdd {
 
     tileList += newEntry
 
+
+    if (secondFile.length > 0) {
+      bytesToUse = Files.readAllBytes(Paths.get(secondFile.toString))
+    } else {
+      throw new Exception("Land cover layer not supplied");
+    }
+
+    // Construct an object with instructions to fetch the raster
+    // Returns SingleBandGeoTiff
+    val gtIn2 = SinglebandGeoTiff(bytesToUse)
+
+    val projectedRaster2 = gtIn2.projectedRaster.reproject( WebMercator, projectOptions)
+
+    val projExt2 = new ProjectedExtent( projectedRaster2._2, WebMercator)
+
+    newEntry = (projExt2, projectedRaster2._1)
+
+    tileList += newEntry
+
     // Look at slope on the single tile.
-    val slopeTile:Tile = projectedRaster._1.slope(projectedRaster.rasterExtent.cellSize, 1.0)
-    var testRamp1 = ColorRamps.LightToDarkSunset.toColorMap(slopeTile.histogram)
-    slopeTile.renderPng(testRamp1).write("data/tileslope.png")
+   // val slopeTile:Tile = projectedRaster._1.slope(projectedRaster.rasterExtent.cellSize, 1.0)
+  //  var testRamp1 = ColorRamps.LightToDarkSunset.toColorMap(slopeTile.histogram)
+  //  slopeTile.renderPng(testRamp1).write("data/tileslope.png")
 
     println( "Parallelizing files.")
 

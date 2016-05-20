@@ -5,7 +5,6 @@ import geotrellis.raster._
 import geotrellis.raster.io.geotiff._
 import geotrellis.raster.render._
 import geotrellis.raster.reproject.Reproject.Options
-import geotrellis.raster.reproject.Reproject.Options
 import geotrellis.raster.resample._
 
 import geotrellis.spark._
@@ -17,8 +16,8 @@ import geotrellis.spark.io.file._
 import geotrellis.spark.io.avro.codecs._
 import geotrellis.spark.io.index.ZCurveKeyIndexMethod
 import geotrellis.spark.pyramid.Pyramid
-import geotrellis.spark.pyramid.Pyramid
 import geotrellis.spark.tiling.{ZoomedLayoutScheme, FloatingLayoutScheme}
+
 
 import geotrellis.vector._
 
@@ -72,6 +71,8 @@ object GenHlz {
     val inputTiles = BuildRdd.tilePrepRoute( sc)
 
     println("Processing Set FloatingLayoutScheme")
+    val layoutScheme = ZoomedLayoutScheme(WebMercator, tileSize = 256)
+
     val (_, tileLayerMetadata ) = TileLayerMetadata.fromRdd(inputTiles, FloatingLayoutScheme(512))
 
     val tiled: RDD[(SpatialKey, Tile)] =
@@ -79,32 +80,39 @@ object GenHlz {
         .tileToLayout(tileLayerMetadata.cellType, tileLayerMetadata.layout, Bilinear)
         .repartition(100)
 
-    val layoutScheme = ZoomedLayoutScheme(WebMercator, tileSize = 256)
+    // Review Stich of original tiles
+   // val stitchip = tiled.stitch
+   // var testRamp1 = ColorRamps.LightToDarkSunset.toColorMap(stitchip.histogram)
+   // stitchip.renderPng(testRamp1).write("data/stitchedip.png")
+
+    //val layoutScheme = ZoomedLayoutScheme(WebMercator, tileSize = 256)
 
     println("Derived Zoom and Raster Data")
 
-    val projectOptions = RasterReprojectOptions(Bilinear)
+    val lclCellSize = tileLayerMetadata.layout.cellSize
+    val projectOptions = RasterReprojectOptions(method = Bilinear, errorThreshold = 0.125,
+      parentGridExtent = None, targetCellSize = Some(lclCellSize) )
+
     val (zoom, reprojected): (Int, RDD[(SpatialKey, Tile)] with Metadata[TileLayerMetadata[SpatialKey]]) =
       TileLayerRDD(tiled, tileLayerMetadata)
-        .reproject(WebMercator, layoutScheme, Bilinear)
+        .convert( FloatConstantNoDataCellType)
+        .reproject(WebMercator, layoutScheme, projectOptions)
+      //  .reproject(WebMercator, layoutScheme, Bilinear)
+
 
     println("Zoom is " + zoom )
     println("Cell size is " + tileLayerMetadata.layout.cellSize.resolution)
 
-    // Review Stich of original tiles
-    val stitchip = tiled.stitch
-    var testRamp1 = ColorRamps.LightToDarkSunset.toColorMap(stitchip.histogram)
-    stitchip.renderPng(testRamp1).write("data/stitchedip.png")
 
     // Review Stich of original Reprojected Tiles
-    val stitchre = reprojected.stitch
-    stitchre._1.renderPng(testRamp1).write("data/stitchedre.png")
+   // val stitchre = reprojected.stitch
+   // stitchre._1.renderPng(testRamp1).write("data/stitchedre.png")
 
     val slopeRdd = reprojected.slope(1.0)
 
     // Review slope RDD as Stitch
-    //  val stitch = slopeRdd.stitch
-    //  stitch._1.renderPng(testRamp1).write("data/stitched.png")
+    //val stitch = slopeRdd.stitch
+    //stitch._1.renderPng(testRamp1).write("data/stitched.png")
 
     // Create the attributes store that will tell us information about our catalog.
     val attributeStore = FileAttributeStore(outputPath)

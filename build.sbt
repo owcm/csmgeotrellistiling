@@ -23,7 +23,7 @@ shellPrompt := { s => Project.extract(s).currentProject.id + " > " }
 resolvers += Resolver.bintrayRepo("azavea", "geotrellis")
 
 // We need to bump up the memory for some of the examples working with the landsat image.
-javaOptions += "-Xmx4G"
+javaOptions += "-Xmx5G"
 
 fork in run := true
 
